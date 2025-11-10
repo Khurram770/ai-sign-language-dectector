@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sign-language-detector
+  labels:
+    app: sign-language-detector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sign-language-detector
+  template:
+    metadata:
+      labels:
+        app: sign-language-detector
+    spec:
+      containers:
+      - name: sign-language-detector
+        image: sign-language-detector:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+          protocol: TCP
+        env:
+        - name: FLASK_APP
+          value: "app.py"
+        - name: FLASK_ENV
+          value: "production"
+        - name: PORT
+          value: "5000"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: CAMERA_INDEX
+          value: "0"
+        - name: TTS_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: dev-video
+          mountPath: /dev/video0
+        - name: dev-video1
+          mountPath: /dev/video1
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: dev-video
+        hostPath:
+          path: /dev/video0
+          type: CharDevice
+      - name: dev-video1
+        hostPath:
+          path: /dev/video1
+          type: CharDevice
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sign Language to Text Converter</h1>
+            <p class="subtitle">Real-time sign language detection with text-to-speech</p>
+        </header>
+
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-container">
+                    <video id="videoElement" autoplay playsinline></video>
+                    <canvas id="canvasElement" style="display: none;"></canvas>
+                    <div class="video-overlay">
+                        <div class="status-indicator">
+                            <span id="ttsStatus" class="status-badge">TTS: OFF</span>
+                            <span id="cameraStatus" class="status-badge">Camera: Loading...</span>
+                        </div>
+                    </div>
+                    <div class="video-controls">
+                        <button id="startCameraBtn" class="btn btn-primary">Start Camera</button>
+                        <button id="stopCameraBtn" class="btn btn-secondary" style="display: none;">Stop Camera</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="sentence-display">
+                    <h2>Detected Sentence</h2>
+                    <div class="sentence-box" id="sentenceBox">
+                        <p id="sentenceText">Make gestures to build your sentence...</p>
+                    </div>
+                    <div class="sentence-actions">
+                        <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                        <button id="backspaceBtn" class="btn btn-secondary">Backspace</button>
+                        <button id="ttsToggleBtn" class="btn btn-primary">Toggle TTS</button>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3>Current Sign</h3>
+                    <div class="sign-display" id="signDisplay">
+                        <p>No sign detected</p>
+                    </div>
+                </div>
+
+                <div class="instructions">
+                    <h3>Instructions</h3>
+                    <ul>
+                        <li>Show your hand to the camera</li>
+                        <li>Make a gesture and hold for 1 second</li>
+                        <li>The sign will be added to your sentence</li>
+                        <li>Use buttons to manage your sentence</li>
+                        <li>Toggle TTS to enable/disable speech</li>
+                    </ul>
+                </div>
+
+                <div class="supported-signs">
+                    <h3>Supported Signs</h3>
+                    <div class="signs-grid">
+                        <span class="sign-badge">Hello</span>
+                        <span class="sign-badge">Good</span>
+                        <span class="sign-badge">Bad</span>
+                        <span class="sign-badge">Yes</span>
+                        <span class="sign-badge">Stop</span>
+                        <span class="sign-badge">More</span>
+                        <span class="sign-badge">Victory</span>
+                        <span class="sign-badge">I Love You</span>
+                        <span class="sign-badge">A</span>
+                        <span class="sign-badge">B</span>
+                        <span class="sign-badge">C</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Sign Language Detector - Powered by MediaPipe & Flask</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Initialize video capture from browser
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvasElement');
+        const ctx = canvas.getContext('2d');
+        let stream = null;
+        let detectionInterval = null;
+
+        document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+        document.getElementById('stopCameraBtn').addEventListener('click', stopCamera);
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 1280, 
+                        height: 720,
+                        facingMode: 'user'
+                    } 
+                });
+                video.srcObject = stream;
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('stopCameraBtn').style.display = 'inline-block';
+                updateCameraStatus(true);
+                
+                // Start sending frames to server for detection
+                startDetection();
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                updateCameraStatus(false);
+                alert('Could not access camera. Please grant camera permissions.');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+            document.getElementById('startCameraBtn').style.display = 'inline-block';
+            document.getElementById('stopCameraBtn').style.display = 'none';
+            updateCameraStatus(false);
+            stopDetection();
+        }
+
+        function startDetection() {
+            // Set canvas size to match video
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            
+            // Send frames to server every 100ms
+            detectionInterval = setInterval(() => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        sendFrameForDetection(blob);
+                    }, 'image/jpeg', 0.8);
+                }
+            }, 100);
+        }
+
+        function stopDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+        }
+
+        function sendFrameForDetection(blob) {
+            const formData = new FormData();
+            formData.append('image', blob, 'frame.jpg');
+
+            fetch('/api/detect', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sign) {
+                    updateSignDisplay(data.sign);
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting sign:', error);
+            });
+        }
+
+        function updateCameraStatus(connected) {
+            const cameraStatus = document.getElementById('cameraStatus');
+            if (connected) {
+                cameraStatus.textContent = 'Camera: Connected';
+                cameraStatus.classList.remove('inactive');
+                cameraStatus.classList.add('active');
+            } else {
+                cameraStatus.textContent = 'Camera: Disconnected';
+                cameraStatus.classList.remove('active');
+                cameraStatus.classList.add('inactive');
+            }
+        }
+    </script>
+</body>
+</html>
+

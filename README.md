@@ -35,9 +35,26 @@ This will check that all dependencies are installed and your camera is working.
 
 ## Usage
 
-### Basic Usage
+### Web Application (Recommended)
 
-Run the main application:
+Run the web application:
+```bash
+python app.py
+```
+
+Or using the startup script:
+```bash
+./run.sh
+```
+
+Then open your browser and navigate to:
+```
+http://localhost:5000
+```
+
+### Desktop Application
+
+Run the desktop application (requires camera access):
 ```bash
 python main.py
 ```
@@ -67,7 +84,8 @@ python verify_setup.py
 
 ```
 sign-language-detector/
-├── main.py                 # Main application entry point
+├── app.py                  # Flask web application (for Kubernetes/Docker)
+├── main.py                 # Desktop application entry point
 ├── detector.py             # Hand detection and tracking
 ├── recognizer.py           # Sign language recognition
 ├── text_converter.py       # Sign to text conversion
@@ -77,12 +95,25 @@ sign-language-detector/
 ├── test_detection.py       # Test hand detection functionality
 ├── verify_setup.py         # Verify installation and setup
 ├── sign_dictionary.json    # Sign to text mapping dictionary
+├── templates/              # HTML templates
+│   └── index.html          # Web interface
+├── static/                 # Static files
+│   ├── css/                # CSS stylesheets
+│   └── js/                 # JavaScript files
+├── k8s/                    # Kubernetes manifests
+│   ├── deployment.yaml     # Kubernetes deployment
+│   ├── service.yaml        # Kubernetes service
+│   ├── configmap.yaml      # Configuration map
+│   └── ingress.yaml        # Ingress configuration
 ├── model/                  # Trained models directory
 ├── data/                   # Training data directory
+├── Dockerfile              # Docker container definition
+├── docker-compose.yml      # Docker Compose configuration
 ├── requirements.txt        # Python dependencies
 ├── README.md              # This file
 ├── QUICKSTART.md          # Quick start guide
-└── SIGNS_GUIDE.md         # Signs reference guide
+├── SIGNS_GUIDE.md         # Signs reference guide
+└── DEPLOYMENT.md          # Deployment guide
 ```
 
 ## How It Works
@@ -104,11 +135,13 @@ The system currently supports common ASL signs. You can extend the sign dictiona
 ## Requirements
 
 - Python 3.8+
-- Webcam/Camera
+- Webcam/Camera (for desktop app) or browser with camera access (for web app)
 - MediaPipe
 - OpenCV
 - NumPy
 - pyttsx3 (for text-to-speech)
+- Flask (for web application)
+- Gunicorn (for production deployment)
 
 ## Text-to-Speech (TTS)
 
@@ -132,6 +165,45 @@ tts_enabled = True   # Enable/disable TTS by default
 tts_rate = 150       # Speech rate (words per minute)
 tts_volume = 0.8     # Volume (0.0 to 1.0)
 ```
+
+## Deployment
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t sign-language-detector:latest .
+
+# Run container
+docker run -d -p 5000:5000 --device=/dev/video0 sign-language-detector:latest
+```
+
+### Kubernetes Deployment
+
+```bash
+# Apply Kubernetes manifests
+kubectl apply -f k8s/
+
+# Access via port forward
+kubectl port-forward service/sign-language-detector-service 5000:80
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## API Endpoints
+
+The web application provides the following API endpoints:
+
+- `GET /` - Main web interface
+- `GET /video_feed` - Video stream with sign detection
+- `GET /api/status` - Get current detection status
+- `GET /api/sentence` - Get current sentence
+- `POST /api/sentence` - Clear sentence
+- `POST /api/sentence/backspace` - Remove last word
+- `POST /api/tts/toggle` - Toggle TTS on/off
+- `GET /api/health` - Health check endpoint
+- `GET /api/config` - Get configuration
+- `POST /api/config` - Update configuration
 
 ## License
 
