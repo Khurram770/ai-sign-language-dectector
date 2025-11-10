@@ -267,6 +267,7 @@ When running the main application:
 - **Press 'q'** to quit
 - **Press 'c'** to clear the current sentence
 - **Press 'b'** to remove the last word (backspace)
+- **Press 't'** to toggle text-to-speech on/off
 
 ### Keyboard Shortcuts
 
@@ -275,6 +276,16 @@ When running the main application:
 | `q` | Quit the application |
 | `c` | Clear the current sentence |
 | `b` | Backspace (remove last word) |
+| `t` | Toggle text-to-speech on/off |
+
+### Text-to-Speech (TTS)
+
+The application can speak out detected signs:
+
+- **Automatic**: When a sign is recognized and added to your sentence, it's automatically spoken
+- **Toggle**: Press 't' key to enable/disable TTS during runtime
+- **Status**: TTS status is displayed on screen (green = ON, red = OFF)
+- **Volume**: Adjust TTS volume and rate in `main.py` if needed
 
 ## How It Works
 

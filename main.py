@@ -10,6 +10,7 @@ import os
 from detector import HandDetector
 from recognizer import SignRecognizer
 from text_converter import TextConverter
+from text_to_speech import TextToSpeech
 
 
 
@@ -51,6 +52,16 @@ def main():
     
     converter = TextConverter(sign_dict_path="sign_dictionary.json")
     
+    # TTS configuration (can be adjusted)
+    tts_enabled = True  # Set to False to disable TTS by default
+    tts_rate = 150  # Speech rate (words per minute)
+    tts_volume = 0.8  # Volume (0.0 to 1.0)
+    
+    # Initialize Text-to-Speech
+    tts = TextToSpeech(enabled=tts_enabled, rate=tts_rate, volume=tts_volume)
+    if not tts.enabled:
+        tts_enabled = False  # Update flag if TTS failed to initialize
+    
     # Initialize camera
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -62,13 +73,20 @@ def main():
     current_sign = None
     sign_start_time = None
     confidence_threshold = 0.4
+    last_spoken_sign = None  # Track last spoken sign to avoid repetition
     
     print("Sign Language Detector Started")
     print("Controls:")
     print("  - 'q': Quit")
     print("  - 'c': Clear sentence")
     print("  - 'b': Backspace (remove last word)")
+    print("  - 't': Toggle text-to-speech on/off")
     print("  - Space: Show your sign to the camera")
+    if tts_enabled and tts.engine is not None:
+        print("  - Text-to-Speech: ENABLED")
+    else:
+        print("  - Text-to-Speech: DISABLED")
+        print("  - Install pyttsx3 to enable: pip install pyttsx3")
     
     while True:
         success, img = cap.read()
@@ -102,7 +120,12 @@ def main():
                     # Check if we've held the sign long enough
                     if sign_start_time and (current_time - sign_start_time) >= sign_hold_duration:
                         # Add sign to sentence
-                        converter.add_sign(sign_text, min_confidence=confidence_threshold, confidence=confidence)
+                        if converter.add_sign(sign_text, min_confidence=confidence_threshold, confidence=confidence):
+                            # Speak the recognized sign
+                            if tts_enabled and tts and tts.engine is not None and sign_text != last_spoken_sign:
+                                tts.speak_async(sign_text)
+                                last_spoken_sign = sign_text
+                                print(f"Speaking: {sign_text}")
                         sign_start_time = None  # Reset to avoid重复添加
                         current_sign = None
                 else:
@@ -153,15 +176,25 @@ def main():
         instructions = [
             "Press 'q' to quit",
             "Press 'c' to clear",
-            "Press 'b' for backspace"
+            "Press 'b' for backspace",
+            f"Press 't' to toggle TTS ({'ON' if tts_enabled else 'OFF'})"
         ]
-        y_pos = img.shape[0] - 90
+        y_pos = img.shape[0] - 110
         for instruction in instructions:
             cv2.putText(
                 img, instruction,
                 (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1
             )
             y_pos += 20
+        
+        # Display TTS status
+        if tts and tts.engine is not None:
+            tts_status = "TTS: ON" if tts_enabled else "TTS: OFF"
+            tts_color = (0, 255, 0) if tts_enabled else (0, 0, 255)
+            cv2.putText(
+                img, tts_status,
+                (img.shape[1] - 120, img.shape[0] - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, tts_color, 2
+            )
         
         # Display hand type and finger states if detected
         hand_type = detector.get_hand_type(hand_no=0)
@@ -193,12 +226,34 @@ def main():
             break
         elif key == ord('c'):
             converter.clear_sentence()
+            last_spoken_sign = None  # Reset spoken sign tracking
             print("Sentence cleared")
         elif key == ord('b'):
             converter.remove_last_word()
+            last_spoken_sign = None  # Reset spoken sign tracking
             print("Last word removed")
+        elif key == ord('t'):
+            # Toggle TTS
+            if tts:
+                tts_enabled = not tts_enabled
+                if tts_enabled:
+                    if tts.engine is None:
+                        tts._initialize_engine()
+                        if tts.engine is None:
+                            tts_enabled = False
+                            print("Failed to enable TTS. Please install pyttsx3: pip install pyttsx3")
+                        else:
+                            tts._start_worker()
+                            print("Text-to-Speech ENABLED")
+                    else:
+                        print("Text-to-Speech ENABLED")
+                else:
+                    tts.stop()
+                    print("Text-to-Speech DISABLED")
     
     # Cleanup
+    if tts:
+        tts.shutdown()
     cap.release()
     cv2.destroyAllWindows()
     print("Application closed")

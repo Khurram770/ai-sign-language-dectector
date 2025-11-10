@@ -7,9 +7,11 @@ A real-time sign language detection and conversion system that recognizes hand g
 - Real-time hand tracking using MediaPipe
 - Sign language gesture recognition
 - Conversion to English text
+- **Text-to-Speech (TTS)** - Speaks out detected signs
 - Support for common ASL (American Sign Language) signs
 - Camera-based input interface
 - Extensible sign dictionary
+- Toggle TTS on/off during runtime
 
 ## Installation
 
@@ -69,6 +71,8 @@ sign-language-detector/
 ├── detector.py             # Hand detection and tracking
 ├── recognizer.py           # Sign language recognition
 ├── text_converter.py       # Sign to text conversion
+├── text_to_speech.py       # Text-to-speech module
+├── gesture_recognizer.py   # Gesture-based recognition
 ├── train_model.py          # Training script for custom signs
 ├── test_detection.py       # Test hand detection functionality
 ├── verify_setup.py         # Verify installation and setup
@@ -77,16 +81,18 @@ sign-language-detector/
 ├── data/                   # Training data directory
 ├── requirements.txt        # Python dependencies
 ├── README.md              # This file
-└── QUICKSTART.md          # Quick start guide
+├── QUICKSTART.md          # Quick start guide
+└── SIGNS_GUIDE.md         # Signs reference guide
 ```
 
 ## How It Works
 
 1. **Hand Detection**: Uses MediaPipe to detect and track hand landmarks in real-time
 2. **Feature Extraction**: Extracts hand pose features from detected landmarks
-3. **Sign Recognition**: Classifies hand gestures using a trained model
+3. **Sign Recognition**: Classifies hand gestures using rule-based gesture recognition
 4. **Text Conversion**: Maps recognized signs to English text
-5. **Display**: Shows the recognized text on screen
+5. **Text-to-Speech**: Speaks out the recognized signs automatically
+6. **Display**: Shows the recognized text on screen
 
 ## Supported Signs
 
@@ -102,6 +108,30 @@ The system currently supports common ASL signs. You can extend the sign dictiona
 - MediaPipe
 - OpenCV
 - NumPy
+- pyttsx3 (for text-to-speech)
+
+## Text-to-Speech (TTS)
+
+The application includes text-to-speech functionality that speaks out detected signs:
+
+- **Automatic Speech**: When a sign is recognized and added to the sentence, it's automatically spoken
+- **Toggle Control**: Press 't' key to toggle TTS on/off during runtime
+- **Configurable**: Adjust speech rate and volume in `main.py`
+- **Cross-platform**: Works on Windows, macOS, and Linux
+
+### TTS Controls
+
+- **'t' key**: Toggle text-to-speech on/off
+- TTS status is displayed on screen (green = ON, red = OFF)
+
+### TTS Configuration
+
+In `main.py`, you can adjust:
+```python
+tts_enabled = True   # Enable/disable TTS by default
+tts_rate = 150       # Speech rate (words per minute)
+tts_volume = 0.8     # Volume (0.0 to 1.0)
+```
 
 ## License
 
